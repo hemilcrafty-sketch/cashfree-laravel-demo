@@ -1,0 +1,9 @@
+{
+    "agents": [
+        "gemini"
+    ],
+    "skills": [
+        "laravel-best-practices",
+        "tailwindcss-development"
+    ]
+}
