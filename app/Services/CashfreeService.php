@@ -39,7 +39,7 @@ class CashfreeService
         $customer_details->setCustomerEmail($params['customer_email']);
 
         $order_meta = new OrderMeta();
-        $order_meta->setReturnUrl(url('/payment-status?order_id={order_id}'));
+        $order_meta->setReturnUrl(config('cashfree.return_url', url('/')) . '?order_id={order_id}');
 
         $create_order_request = new CreateOrderRequest();
         $create_order_request->setOrderAmount((float) $params['amount']);

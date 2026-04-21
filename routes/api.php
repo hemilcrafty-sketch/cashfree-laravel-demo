@@ -1,18 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\Api\PaymentController;
 
 /*
-| API Routes for Cashfree Integration
+|--------------------------------------------------------------------------
+| API Routes for Cashfree REST Integration
+|--------------------------------------------------------------------------
 */
 
+// Create Order API
+Route::post('/create-order', [PaymentController::class, 'createOrder']);
+
+// Check Payment Status API
+Route::get('/payment-status/{order_id}', [PaymentController::class, 'paymentStatus']);
+
+// Webhook Handler API
 Route::post('/cashfree/webhook', [PaymentController::class, 'handleWebhook']);
-
-// You can keep the others for debugging if you want, but the above is the main one requested.
-Route::prefix('payments')->group(function () {
-    Route::get('/verify/{order_id}', [PaymentController::class, 'verifyPayment']); // Fixed version might be needed later
-});
-
-
-
