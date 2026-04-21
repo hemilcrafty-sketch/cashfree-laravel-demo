@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -12,6 +13,12 @@ return new class extends Migration {
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+            $table->string('order_id')->unique();
+            $table->decimal('amount', 10, 2);
+            $table->string('currency')->default('INR');
+            $table->enum('status', ['pending', 'success', 'failed'])->default('pending');
+            $table->string('payment_id')->nullable();
+            $table->json('raw_response')->nullable();
             $table->timestamps();
         });
     }

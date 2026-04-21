@@ -1,0 +1,148 @@
+{
+	"info": {
+		"_postman_id": "cf-payment-demo-v2",
+		"name": "Cashfree Payment Integration V2",
+		"description": "Updated API collection for local XAMPP testing (No /public in URL).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Order",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"amount\": 1.00,\n    \"email\": \"test@example.com\",\n    \"phone\": \"9988776655\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/payments/create-order",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"payments",
+						"create-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get Local Payment Details",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/payments/ORD_YOUR_ID",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"payments",
+						"ORD_YOUR_ID"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Sync Payment Status (Verify)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/payments/verify/ORD_YOUR_ID",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"payments",
+						"verify",
+						"ORD_YOUR_ID"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Generate Signature (Testing Helper)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"data\": {\n        \"order\": {\n            \"order_id\": \"ORD_YOUR_ID\"\n        },\n        \"payment\": {\n            \"payment_status\": \"SUCCESS\",\n            \"cf_payment_id\": \"TEST_PAY_67890\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/payments/test-signature",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"payments",
+						"test-signature"
+					]
+				},
+				"description": "Send your desired Webhook JSON body here to get the correct signature for your x-webhook-signature header."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Verify Webhook",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "x-webhook-signature",
+						"value": "PASTE_THE_GENERATED_SIGNATURE_HERE"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"data\": {\n        \"order\": {\n            \"order_id\": \"ORD_YOUR_ID\"\n        },\n        \"payment\": {\n            \"payment_status\": \"SUCCESS\",\n            \"cf_payment_id\": \"TEST_PAY_67890\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/payments/webhook",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"payments",
+						"webhook"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000"
+		}
+	]
+}
