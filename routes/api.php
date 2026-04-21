@@ -7,13 +7,11 @@ use App\Http\Controllers\PaymentController;
 | API Routes for Cashfree Integration
 */
 
+Route::post('/cashfree/webhook', [PaymentController::class, 'handleWebhook']);
+
+// You can keep the others for debugging if you want, but the above is the main one requested.
 Route::prefix('payments')->group(function () {
-    Route::post('/create-order', [PaymentController::class, 'createOrder']);
-    Route::get('/verify/{order_id}', [PaymentController::class, 'verifyPayment']);
-    Route::get('/{order_id}', [PaymentController::class, 'showPayment']); // Added for completeness
-    Route::post('/webhook', [PaymentController::class, 'handleWebhook']);
-    Route::post('/test-signature', [PaymentController::class, 'generateTestSignature']); // Helper for testing
-    Route::post('/simulate-webhook', [PaymentController::class, 'simulateWebhook']); // FULL Simulate
+    Route::get('/verify/{order_id}', [PaymentController::class, 'verifyPayment']); // Fixed version might be needed later
 });
 
 

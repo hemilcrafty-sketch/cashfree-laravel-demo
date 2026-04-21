@@ -3,129 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashfree Payment Demo</title>
-    <!-- Tailwind CSS -->
+    <title>Cashfree Laravel Integration | Production Ready</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Cashfree SDK -->
-    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <style>
         body { font-family: 'Outfit', sans-serif; background: #0f172a; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .animate-glow { animation: glow 4s infinite alternate; }
+        @keyframes glow { from { box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.2); } to { box-shadow: 0 0 40px 5px rgba(99, 102, 241, 0.4); } }
     </style>
 </head>
 <body class="text-white min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-    <!-- Background Gradients -->
-    <div class="absolute top-0 -left-48 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-    <div class="absolute bottom-0 -right-48 w-96 h-96 bg-pink-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-700"></div>
+    <!-- Background Accents -->
+    <div class="absolute top-0 -left-48 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse"></div>
+    <div class="absolute bottom-0 -right-48 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse delay-700"></div>
 
-    <div class="max-w-xl w-full relative">
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">Cashfree Demo</h1>
-            <p class="text-slate-400 text-lg">Integrated with Laravel & Latest API v2023-08-01</p>
+    <div class="max-w-xl w-full relative z-10">
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-bold mb-3 tracking-tight bg-gradient-to-r from-indigo-300 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                Cashfree PHP SDK
+            </h1>
+            <p class="text-slate-400 text-lg font-light">Modern • Secure • Production Ready</p>
         </div>
 
-        <div class="glass p-8 rounded-3xl shadow-2xl">
-            <form id="paymentForm" class="space-y-6">
+        <div class="glass p-10 rounded-[2.5rem] shadow-2xl animate-glow">
+            @if(session('error'))
+                <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <form action="{{ route('payment.create') }}" method="POST" class="space-y-8">
                 @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Customer Name</label>
-                        <input type="text" name="name" value="Hemil Patel" required class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all">
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Customer Email</label>
+                            <input type="email" name="customer_email" value="customer@example.com" required 
+                                class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500/50 focus:bg-white/10 transition-all text-slate-200">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Phone Number</label>
+                            <input type="tel" name="customer_phone" value="9876543210" pattern="[0-9]{10}" required 
+                                class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500/50 focus:bg-white/10 transition-all text-slate-200">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Amount (INR)</label>
-                        <input type="number" name="amount" value="1.00" min="1" step="0.01" required class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all text-indigo-400 font-bold text-xl">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
-                        <input type="email" name="email" value="hemil@example.com" required class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Phone Number</label>
-                        <input type="tel" name="phone" value="9876543210" pattern="[0-9]{10}" required class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all">
+
+                    <div class="bg-indigo-500/10 p-8 rounded-3xl border border-indigo-500/20 group hover:border-indigo-500/40 transition-all">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-indigo-300 font-semibold mb-1">Service Amount</h3>
+                                <p class="text-slate-500 text-xs uppercase tracking-widest">Payable in INR</p>
+                            </div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-slate-400 text-sm">₹</span>
+                                <input type="number" name="amount" value="1.00" min="1" step="0.01" required 
+                                    class="w-24 bg-transparent text-3xl font-bold text-white text-right focus:outline-none">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div id="errorMessage" class="hidden p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm"></div>
-
-                <button type="submit" id="payButton" class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 py-4 rounded-xl font-bold text-lg shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3">
-                    <span id="buttonText">Pay Securely Now</span>
-                    <svg id="loadingSpinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] hover:bg-right py-5 rounded-2xl font-bold text-lg shadow-xl shadow-indigo-500/20 transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-3">
+                    Start Secure Payment
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                 </button>
             </form>
         </div>
 
-        <div class="mt-8 flex justify-center gap-6 opacity-40 grayscale transition-all hover:grayscale-0 hover:opacity-100 italic text-sm">
-            <span class="flex items-center gap-1">🔒 SSL Secure</span>
-            <span class="flex items-center gap-1">✅ 256-bit AES</span>
-            <span class="flex items-center gap-1">💳 PCI-DSS Compliant</span>
+        <div class="mt-12 flex flex-col items-center gap-4 opacity-40">
+            <div class="flex gap-8 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                <span>AES-256 Bit</span>
+                <span>ISO 27001</span>
+                <span>PCI DSS</span>
+            </div>
+            <img src="https://www.cashfree.com/wp-content/themes/cashfree/images/logo.svg" alt="Cashfree" class="h-4 brightness-0 invert">
         </div>
     </div>
-
-    <script>
-        const cashfree = Cashfree({ mode: "sandbox" }); 
-
-        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const btn = document.getElementById('payButton');
-            const btnText = document.getElementById('buttonText');
-            const spinner = document.getElementById('loadingSpinner');
-            const errorDiv = document.getElementById('errorMessage');
-            
-            // UI Loading state
-            btn.disabled = true;
-            btnText.textContent = 'Processing...';
-            spinner.classList.remove('hidden');
-            errorDiv.classList.add('hidden');
-
-            try {
-                // 1. Create Order through Backend
-                // Using URL without domain for subfolder compatibility
-                const response = await fetch('api/payments/create-order', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        amount: e.target.amount.value,
-                        email: e.target.email.value,
-                        phone: e.target.phone.value
-                    })
-                });
-
-                if (response.status === 404) {
-                    throw new Error("API Route not found. Ensure you are using the correct URL (e.g. http://localhost:8000).");
-                }
-
-                const data = await response.json();
-
-                if (data.status !== 'success') {
-                    throw new Error(data.message || 'API Error');
-                }
-
-                // 2. Launch Cashfree Checkout
-                let checkoutOptions = {
-                    paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_self", 
-                };
-
-                cashfree.checkout(checkoutOptions);
-
-            } catch (err) {
-                errorDiv.textContent = err.message;
-                errorDiv.classList.remove('hidden');
-                btn.disabled = false;
-                btnText.textContent = 'Pay Securely Now';
-                spinner.classList.add('hidden');
-            }
-        });
-    </script>
 </body>
 </html>
