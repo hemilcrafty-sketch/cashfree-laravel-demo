@@ -14,12 +14,12 @@ class CashfreeService
 
     public function __construct()
     {
-        $this->clientId = config('services.cashfree.client_id');
-        $this->clientSecret = config('services.cashfree.client_secret');
-        $this->apiVersion = config('services.cashfree.api_version', '2023-08-01');
+        $this->clientId = trim(config('services.cashfree.client_id'));
+        $this->clientSecret = trim(config('services.cashfree.client_secret'));
+        $this->apiVersion = '2023-08-01';
         
-        $env = config('services.cashfree.env', 'sandbox');
-        $this->baseUrl = $env === 'production' 
+        $env = trim(config('services.cashfree.env', 'sandbox'));
+        $this->baseUrl = ($env === 'production') 
             ? 'https://api.cashfree.com/pg' 
             : 'https://sandbox.cashfree.com/pg';
     }
@@ -30,6 +30,24 @@ class CashfreeService
     public function createOrder($orderId, $amount, $email, $phone)
     {   
         try {
+            $payload = [
+                'order_id' => $orderId,
+                'order_amount' => (float) $amount,
+                'order_currency' => 'INR',
+                'customer_details' => [
+                    'customer_id' => $orderId,
+                    'customer_name' => 'Test Customer',
+                    'customer_email' => $email,
+                    'customer_phone' => $phone,
+                ],
+                'order_meta' => [
+                    'return_url' => request()->root() . '/api/payments/verify/' . $orderId,
+                    'notify_url' => request()->root() . '/api/payments/webhook',
+                ]
+            ];
+
+            Log::info('Cashfree API Request Payload:', $payload);
+
             $response = Http::withHeaders([
                 'x-client-id' => $this->clientId,
                 'x-client-secret' => $this->clientSecret,
@@ -38,20 +56,7 @@ class CashfreeService
             ])
             ->timeout(15)
             ->retry(3, 100)
-            ->post("{$this->baseUrl}/orders", [
-                'order_id' => $orderId,
-                'order_amount' => (float) $amount,
-                'order_currency' => 'INR',
-                'customer_details' => [
-                    'customer_id' => "cust_" . str_replace('order_', '', $orderId),
-                    'customer_email' => $email,
-                    'customer_phone' => $phone,
-                ],
-                'order_meta' => [
-                    'return_url' => url('/api/payments/verify/' . $orderId),
-                    'notify_url' => url('/api/payments/webhook'),
-                ]
-            ]);
+            ->post("{$this->baseUrl}/orders", $payload);
 
             if ($response->failed()) {
                 Log::error('Cashfree API Order Creation Failed', [
@@ -61,7 +66,9 @@ class CashfreeService
                 throw new \Exception('Payment gateway error. Please try again later.');
             }
 
-            return $response->object();
+            $obj = $response->object();
+            Log::info('Cashfree RAW Response: ' . $response->body());
+            return $obj;
         } catch (\Exception $e) {
             Log::critical('Cashfree Service Exception: ' . $e->getMessage());
             throw $e;

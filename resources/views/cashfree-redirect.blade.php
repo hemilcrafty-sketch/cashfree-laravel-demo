@@ -18,6 +18,8 @@
     </div>
 
     <script>
+        console.log("Cashfree Session ID:", "{{ $paymentSessionId }}");
+        
         const cashfree = Cashfree({
             mode: "{{ config('services.cashfree.env') === 'production' ? 'production' : 'sandbox' }}"
         });

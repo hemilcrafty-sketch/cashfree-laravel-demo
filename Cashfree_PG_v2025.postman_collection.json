@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "cf-payment-demo-v2025",
 		"name": "Cashfree PG v2025-01-01 Integration",
-		"description": "Updated API collection for the direct REST API integration (v2025-01-01). This collection maps to the new /api/payments/* routes.",
+		"description": "Updated API collection for the direct REST API integration (v2025-01-01). This collection now includes the direct checkout_url and JSON verification support.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -35,35 +35,20 @@
 						"create-order"
 					]
 				},
-				"description": "Creates a new order in both the local database and Cashfree. Returns the payment_session_id needed for the frontend SDK."
+				"description": "Creates a new order. Returns 'checkout_url' for direct redirection and 'payment_session_id' for SDK usage."
 			},
 			"response": []
 		},
 		{
-			"name": "2. Get Local Order Status",
+			"name": "2. Verify Order (API Response)",
 			"request": {
 				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/api/payments/ORD_YOUR_ID",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"payments",
-						"ORD_YOUR_ID"
-					]
-				},
-				"description": "Fetches the current status of an order from your local database."
-			},
-			"response": []
-		},
-		{
-			"name": "3. Sync/Verify Order (Fetch from Cashfree)",
-			"request": {
-				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
 				"url": {
 					"raw": "{{baseUrl}}/api/payments/verify/ORD_YOUR_ID",
 					"host": [
@@ -76,12 +61,12 @@
 						"ORD_YOUR_ID"
 					]
 				},
-				"description": "Fetches the latest status directly from Cashfree and updates your local database record."
+				"description": "Fetches the latest status directly from Cashfree and returns a JSON response. Ensure you replace ORD_YOUR_ID with a real ID."
 			},
 			"response": []
 		},
 		{
-			"name": "4. Webhook Simulation (v5 format)",
+			"name": "3. Webhook Simulation (v5 format)",
 			"request": {
 				"method": "POST",
 				"header": [
