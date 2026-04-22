@@ -16,7 +16,7 @@ class CashfreeService
     {
         $this->clientId = config('services.cashfree.client_id');
         $this->clientSecret = config('services.cashfree.client_secret');
-        $this->apiVersion = '2025-01-01';
+        $this->apiVersion = config('services.cashfree.api_version', '2023-08-01');
         
         $env = config('services.cashfree.env', 'sandbox');
         $this->baseUrl = $env === 'production' 
@@ -29,35 +29,43 @@ class CashfreeService
      */
     public function createOrder($orderId, $amount, $email, $phone)
     {   
-        $response = Http::withHeaders([
-            'x-client-id' => $this->clientId,
-            'x-client-secret' => $this->clientSecret,
-            'x-api-version' => $this->apiVersion,
-            'Content-Type' => 'application/json',
-        ])->post("{$this->baseUrl}/orders", [
-            'order_id' => $orderId,
-            'order_amount' => (float) $amount,
-            'order_currency' => 'INR',
-            'customer_details' => [
-                'customer_id' => "cust_" . str_replace('order_', '', $orderId),
-                'customer_email' => $email,
-                'customer_phone' => $phone,
-            ],
-            'order_meta' => [
-                'return_url' => url('/api/payments/verify/' . $orderId),
-                'notify_url' => url('/api/payments/webhook'),
-            ]
-        ]);
-
-        if ($response->failed()) {
-            Log::error('Cashfree API Error:', [
-                'status' => $response->status(),
-                'body' => $response->json(),
+        try {
+            $response = Http::withHeaders([
+                'x-client-id' => $this->clientId,
+                'x-client-secret' => $this->clientSecret,
+                'x-api-version' => $this->apiVersion,
+                'Content-Type' => 'application/json',
+            ])
+            ->timeout(15)
+            ->retry(3, 100)
+            ->post("{$this->baseUrl}/orders", [
+                'order_id' => $orderId,
+                'order_amount' => (float) $amount,
+                'order_currency' => 'INR',
+                'customer_details' => [
+                    'customer_id' => "cust_" . str_replace('order_', '', $orderId),
+                    'customer_email' => $email,
+                    'customer_phone' => $phone,
+                ],
+                'order_meta' => [
+                    'return_url' => url('/api/payments/verify/' . $orderId),
+                    'notify_url' => url('/api/payments/webhook'),
+                ]
             ]);
-            throw new \Exception('Cashfree API Error: ' . $response->body());
-        }
 
-        return $response->object();
+            if ($response->failed()) {
+                Log::error('Cashfree API Order Creation Failed', [
+                    'status' => $response->status(),
+                    'response' => $response->json(),
+                ]);
+                throw new \Exception('Payment gateway error. Please try again later.');
+            }
+
+            return $response->object();
+        } catch (\Exception $e) {
+            Log::critical('Cashfree Service Exception: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -65,22 +73,40 @@ class CashfreeService
      */
     public function getOrder($orderId)
     {
-        $response = Http::withHeaders([
-            'x-client-id' => $this->clientId,
-            'x-client-secret' => $this->clientSecret,
-            'x-api-version' => $this->apiVersion,
-        ])->get("{$this->baseUrl}/orders/{$orderId}");
+        try {
+            $response = Http::withHeaders([
+                'x-client-id' => $this->clientId,
+                'x-client-secret' => $this->clientSecret,
+                'x-api-version' => $this->apiVersion,
+            ])
+            ->timeout(15)
+            ->retry(3, 100)
+            ->get("{$this->baseUrl}/orders/{$orderId}");
 
-        return $response->object();
+            if ($response->failed()) {
+                Log::error('Cashfree API Get Order Failed', [
+                    'order_id' => $orderId,
+                    'status' => $response->status(),
+                ]);
+                return null;
+            }
+
+            return $response->object();
+        } catch (\Exception $e) {
+            Log::error('Cashfree GetOrder Exception: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
-     * Verify Cashfree Webhook Signature
+     * Verify Cashfree Webhook Signature (Securely)
      */
     public function verifySignature($signature, $timestamp, $rawData)
     {
         $data = $timestamp . $rawData;
         $computedSignature = base64_encode(hash_hmac('sha256', $data, $this->clientSecret, true));
-        return $signature === $computedSignature;
+        
+        // Use hash_equals to prevent timing attacks
+        return hash_equals($signature, $computedSignature);
     }
 }

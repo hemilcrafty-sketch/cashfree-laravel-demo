@@ -39,6 +39,8 @@ return [
         'client_id' => env('CASHFREE_CLIENT_ID'),
         'client_secret' => env('CASHFREE_CLIENT_SECRET'),
         'env' => env('CASHFREE_ENV', 'sandbox'),
+        'api_version' => env('CASHFREE_API_VERSION', '2023-08-01'),
+
     ],
 
 ];

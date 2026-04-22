@@ -3,5 +3,5 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json(['message' => 'Cashfree Laravel API only Demo']);
-});
+    return view('welcome');
+})->name('payment.form');
