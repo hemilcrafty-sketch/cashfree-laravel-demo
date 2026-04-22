@@ -34,7 +34,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('payment.create') }}" method="POST" class="space-y-8">
+            <form action="{{ route('payment.process') }}" method="POST" class="space-y-8">
                 @csrf
                 <div class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -78,7 +78,7 @@
                 <span>ISO 27001</span>
                 <span>PCI DSS</span>
             </div>
-            <img src="https://www.cashfree.com/wp-content/themes/cashfree/images/logo.svg" alt="Cashfree" class="h-4 brightness-0 invert">
+            <img src="https://cashfreelogo.cashfree.com/website/landings/homepage/cashfreeLogo.png " alt="Cashfree" class="h-4">
         </div>
     </div>
 </body>
