@@ -9,17 +9,16 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_id')->unique();
             $table->decimal('amount', 10, 2);
-            $table->string('status')->default('pending'); // pending, paid, failed
+            $table->string('status')->default('pending');
             $table->string('customer_email');
             $table->string('customer_phone');
             $table->string('payment_id')->nullable();
-            $table->string('payment_session_id')->nullable();
             $table->timestamps();
         });
     }

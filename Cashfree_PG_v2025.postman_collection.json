@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "cf-payment-demo-v2",
-		"name": "Cashfree Payment Integration V2",
-		"description": "Updated API collection for local XAMPP testing (No /public in URL).",
+		"_postman_id": "cf-payment-demo-v2025",
+		"name": "Cashfree PG v2025-01-01 Integration",
+		"description": "Updated API collection for the direct REST API integration (v2025-01-01). This collection maps to the new /api/payments/* routes.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -22,7 +22,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"amount\": 1.00,\n    \"email\": \"test@example.com\",\n    \"phone\": \"9988776655\"\n}"
+					"raw": "{\n    \"amount\": 1.00,\n    \"email\": \"customer@example.com\",\n    \"phone\": \"9876543210\"\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}/api/payments/create-order",
@@ -34,12 +34,13 @@
 						"payments",
 						"create-order"
 					]
-				}
+				},
+				"description": "Creates a new order in both the local database and Cashfree. Returns the payment_session_id needed for the frontend SDK."
 			},
 			"response": []
 		},
 		{
-			"name": "2. Get Local Payment Details",
+			"name": "2. Get Local Order Status",
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -53,12 +54,13 @@
 						"payments",
 						"ORD_YOUR_ID"
 					]
-				}
+				},
+				"description": "Fetches the current status of an order from your local database."
 			},
 			"response": []
 		},
 		{
-			"name": "3. Sync Payment Status (Verify)",
+			"name": "3. Sync/Verify Order (Fetch from Cashfree)",
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -73,12 +75,13 @@
 						"verify",
 						"ORD_YOUR_ID"
 					]
-				}
+				},
+				"description": "Fetches the latest status directly from Cashfree and updates your local database record."
 			},
 			"response": []
 		},
 		{
-			"name": "4. Generate Signature (Testing Helper)",
+			"name": "4. Webhook Simulation (v5 format)",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -89,40 +92,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"data\": {\n        \"order\": {\n            \"order_id\": \"ORD_YOUR_ID\"\n        },\n        \"payment\": {\n            \"payment_status\": \"SUCCESS\",\n            \"cf_payment_id\": \"TEST_PAY_67890\"\n        }\n    }\n}"
-				},
-				"url": {
-					"raw": "{{baseUrl}}/api/payments/test-signature",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"payments",
-						"test-signature"
-					]
-				},
-				"description": "Send your desired Webhook JSON body here to get the correct signature for your x-webhook-signature header."
-			},
-			"response": []
-		},
-		{
-			"name": "5. Verify Webhook",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					},
-					{
-						"key": "x-webhook-signature",
-						"value": "PASTE_THE_GENERATED_SIGNATURE_HERE"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"data\": {\n        \"order\": {\n            \"order_id\": \"ORD_YOUR_ID\"\n        },\n        \"payment\": {\n            \"payment_status\": \"SUCCESS\",\n            \"cf_payment_id\": \"TEST_PAY_67890\"\n        }\n    }\n}"
+					"raw": "{\n    \"data\": {\n        \"order\": {\n            \"order_id\": \"ORD_YOUR_ID\"\n        },\n        \"payment\": {\n            \"payment_status\": \"SUCCESS\",\n            \"cf_payment_id\": \"PAY_99887766\"\n        }\n    }\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}/api/payments/webhook",
@@ -134,7 +104,8 @@
 						"payments",
 						"webhook"
 					]
-				}
+				},
+				"description": "Simulates a Cashfree webhook notification. Use this to test your backend's ability to handle asynchronous updates."
 			},
 			"response": []
 		}

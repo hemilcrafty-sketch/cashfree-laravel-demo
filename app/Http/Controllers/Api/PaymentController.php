@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Services\CashfreeService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Services\CashfreeService;
+use App\Models\Order;
 
 class PaymentController extends Controller
 {
@@ -17,148 +16,130 @@ class PaymentController extends Controller
         $this->cashfree = $cashfree;
     }
 
-    /**
-     * Create Order API
-     * POST /api/create-order
-     */
     public function createOrder(Request $request)
     {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'customer_email' => 'required|email',
-            'customer_phone' => 'required|digits:10',
+        $request->validate([
+            'amount' => 'required|numeric',
+            'customer_email' => 'required_without:email',
+            'email' => 'sometimes|email',
+            'customer_phone' => 'required_without:phone',
+            'phone' => 'sometimes'
         ]);
 
-        try {
-            // Internal unique Order ID
-            $orderId = 'ORD_' . strtoupper(bin2hex(random_bytes(4)));
+        $email = $request->customer_email ?? $request->email;
+        $phone = $request->customer_phone ?? $request->phone;
 
-            $result = $this->cashfree->createOrder([
-                'order_id' => $orderId,
-                'amount' => $validated['amount'],
-                'customer_email' => $validated['customer_email'],
-                'customer_phone' => $validated['customer_phone'],
-            ]);
+        $orderId = uniqid("order_");
 
-            if (!$result['success']) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Payment Initiation Failed',
-                    'details' => $result['message']
-                ], 400);
-            }
+        // Save order
+        $order = Order::create([
+            'order_id' => $orderId,
+            'amount' => $request->amount,
+            'customer_email' => $email,
+            'customer_phone' => $phone,
+            'status' => 'pending'
+        ]);
 
-            $orderData = $result['data']; // OrderEntity
+        $response = $this->cashfree->createOrder(
+            $orderId,
+            $request->amount,
+            $email,
+            $phone
+        );
 
-            // Save to DB before returning response
-            Order::create([
-                'order_id' => $orderId,
-                'amount' => $validated['amount'],
-                'status' => 'pending',
-                'customer_email' => $validated['customer_email'],
-                'customer_phone' => $validated['customer_phone'],
-                'payment_session_id' => $orderData->getPaymentSessionId(),
-            ]);
-
-            return response()->json([
-                'order_id' => $orderId,
-                'payment_session_id' => $orderData->getPaymentSessionId(),
-                'payment_link' => $this->getCheckoutUrl($orderData->getPaymentSessionId())
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('API Create Order Error: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Internal Server Error'], 500);
-        }
+        return response()->json([
+            'order_id' => $orderId,
+            'payment_session_id' => $response->payment_session_id ?? null,
+            'payment_link' => $response->payment_link ?? null
+        ]);
     }
 
-    /**
-     * Check Payment Status API
-     * GET /api/payment-status/{order_id}
-     */
     public function paymentStatus($orderId)
     {
         $order = Order::where('order_id', $orderId)->first();
-        
-        if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
 
-        // Sync with Cashfree once more to ensure status is up to date
-        $this->syncOrderStatus($orderId);
-        $order->refresh();
+        if (!$order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
 
         return response()->json([
             'order_id' => $order->order_id,
-            'status' => $order->status, // paid, pending, failed
-            'payment_id' => $order->payment_id,
-            'amount' => $order->amount
+            'status' => $order->status,
+            'amount' => $order->amount,
+            'customer' => [
+                'email' => $order->customer_email,
+                'phone' => $order->customer_phone,
+            ]
         ]);
     }
 
-    /**
-     * Webhook Handler API
-     * POST /api/cashfree/webhook
-     */
-    public function handleWebhook(Request $request)
+    public function verifyPayment($orderId)
+    {
+        $order = Order::where('order_id', $orderId)->first();
+
+        if (!$order) {
+            return response()->json(['error' => 'Order not found locally'], 404);
+        }
+
+        try {
+            $cfOrder = $this->cashfree->getOrder($orderId);
+            
+            if (isset($cfOrder->order_status)) {
+                $order->status = strtolower($cfOrder->order_status);
+                $order->save();
+            }
+
+            return response()->json([
+                'order_id' => $orderId,
+                'status' => $order->status,
+                'cashfree_response' => $cfOrder
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function webhook(Request $request)
     {
         $signature = $request->header('x-webhook-signature');
         $timestamp = $request->header('x-webhook-timestamp');
-        $rawPayload = $request->getContent();
+        $rawData = $request->getContent();
 
-        Log::info('Cashfree API Webhook Received', ['payload' => $request->all()]);
+        \Log::info('Cashfree Webhook received', ['data' => $request->all()]);
 
-        // Secure Signature Verification
-        $event = $this->cashfree->verifyWebhook($signature, $rawPayload, $timestamp);
-        if (!$event) {
-            Log::warning('Webhook Signature Mismatch');
-            return response()->json(['message' => 'Invalid Signature'], 400);
+        // Verify signature if headers are present
+        if ($signature && $timestamp) {
+            try {
+                if (!$this->cashfree->verifySignature($signature, $timestamp, $rawData)) {
+                    \Log::error('Cashfree Webhook: Invalid Signature');
+                    return response()->json(['error' => 'Invalid signature'], 401);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Cashfree Webhook: Verification Error', ['message' => $e->getMessage()]);
+            }
         }
 
-        $payload = $event->object;
-        $data = $payload->data;
-        $orderId = $data->order->order_id;
-        $paymentStatus = $data->payment->payment_status;
-        $cfPaymentId = $data->payment->cf_payment_id;
+        // Handle both nested (v3) and flat (v2) structures
+        $orderId = $request->input('data.order.order_id') ?? $request->input('order_id');
+        $status = $request->input('data.payment.payment_status') ?? $request->input('order_status');
+        $cfPaymentId = $request->input('data.payment.cf_payment_id') ?? $request->input('cf_payment_id');
 
         $order = Order::where('order_id', $orderId)->first();
-        if ($order && $order->status !== 'paid') {
-            $newStatus = ($paymentStatus === 'SUCCESS') ? 'paid' : 'failed';
-            $order->update([
-                'status' => $newStatus,
-                'payment_id' => $cfPaymentId
-            ]);
+
+        if ($order) {
+            // Cashfree statuses: SUCCESS, FAILED, PENDING, USER_DROPPED
+            if (in_array($status, ['SUCCESS', 'PAID'])) {
+                $order->status = 'paid';
+            } elseif (in_array($status, ['FAILED', 'CANCELLED'])) {
+                $order->status = 'failed';
+            }
+            
+            $order->payment_id = $cfPaymentId;
+            $order->save();
+            
+            \Log::info('Order updated via webhook', ['order_id' => $orderId, 'status' => $order->status]);
         }
 
-        return response()->json(['status' => 'success']);
-    }
-
-    /**
-     * Construct Checkout URL for Sandbox/Production
-     */
-    protected function getCheckoutUrl($sessionId)
-    {
-        $env = config('cashfree.environment');
-        return ($env === 'production')
-            ? "https://payments.cashfree.com/order/$sessionId"
-            : "https://sandbox.cashfree.com/pg/view/checkout?session_id=$sessionId";
-    }
-
-    /**
-     * Sync order status with Cashfree API
-     */
-    protected function syncOrderStatus($orderId)
-    {
-        $result = $this->cashfree->getOrder($orderId);
-        if ($result['success']) {
-            $orderData = $result['data'];
-            $cfStatus = $orderData->getOrderStatus();
-            $status = match ($cfStatus) {
-                'PAID' => 'paid',
-                'FAILED', 'EXPIRED', 'TERMINATED' => 'failed',
-                default => 'pending'
-            };
-            Order::where('order_id', $orderId)->update(['status' => $status]);
-        }
+        return response()->json(['status' => 'ok']);
     }
 }

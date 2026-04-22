@@ -2,103 +2,85 @@
 
 namespace App\Services;
 
-use Cashfree\Cashfree;
-use Cashfree\Model\CreateOrderRequest;
-use Cashfree\Model\CustomerDetails;
-use Cashfree\Model\OrderMeta;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class CashfreeService
 {
-    protected $cashfree;
+    protected $clientId;
+    protected $clientSecret;
+    protected $baseUrl;
+    protected $apiVersion;
 
     public function __construct()
     {
-        $this->cashfree = new Cashfree(
-            config('cashfree.environment') === 'production' ? 1 : 0,
-            config('cashfree.app_id'),
-            config('cashfree.secret_key'),
-            "", // XPartnerApiKey
-            "", // XPartnerMerchantId
-            "", // XClientSignature
-            true // XEnableErrorAnalytics
-        );
+        $this->clientId = config('services.cashfree.client_id');
+        $this->clientSecret = config('services.cashfree.client_secret');
+        $this->apiVersion = '2025-01-01';
         
-        $this->cashfree->XApiVersion = config('cashfree.api_version', '2023-08-01');
+        $env = config('services.cashfree.env', 'sandbox');
+        $this->baseUrl = $env === 'production' 
+            ? 'https://api.cashfree.com/pg' 
+            : 'https://sandbox.cashfree.com/pg';
     }
 
     /**
-     * Create a new order in Cashfree using SDK
+     * Create an order in Cashfree
      */
-    public function createOrder(array $params)
-    {
-        $customer_details = new CustomerDetails();
-        $customer_details->setCustomerId($params['customer_id'] ?? 'CUST_' . Str::random(10));
-        $customer_details->setCustomerPhone($params['customer_phone']);
-        $customer_details->setCustomerEmail($params['customer_email']);
+    public function createOrder($orderId, $amount, $email, $phone)
+    {   
+        $response = Http::withHeaders([
+            'x-client-id' => $this->clientId,
+            'x-client-secret' => $this->clientSecret,
+            'x-api-version' => $this->apiVersion,
+            'Content-Type' => 'application/json',
+        ])->post("{$this->baseUrl}/orders", [
+            'order_id' => $orderId,
+            'order_amount' => (float) $amount,
+            'order_currency' => 'INR',
+            'customer_details' => [
+                'customer_id' => "cust_" . str_replace('order_', '', $orderId),
+                'customer_email' => $email,
+                'customer_phone' => $phone,
+            ],
+            'order_meta' => [
+                'return_url' => url('/api/payments/verify/' . $orderId),
+                'notify_url' => url('/api/payments/webhook'),
+            ]
+        ]);
 
-        $order_meta = new OrderMeta();
-        $order_meta->setReturnUrl(config('cashfree.return_url', url('/')) . '?order_id={order_id}');
-
-        $create_order_request = new CreateOrderRequest();
-        $create_order_request->setOrderAmount((float) $params['amount']);
-        $create_order_request->setOrderCurrency("INR");
-        $create_order_request->setCustomerDetails($customer_details);
-        $create_order_request->setOrderMeta($order_meta);
-        
-        $orderId = $params['order_id'] ?? 'ORD_' . time() . Str::random(4);
-        $create_order_request->setOrderId($orderId);
-
-        try {
-            $result = $this->cashfree->pGCreateOrder($create_order_request);
-            
-            return [
-                'success' => true,
-                'data' => $result[0], // OrderEntity
-                'status' => $result[1]
-            ];
-        } catch (\Exception $e) {
-            Log::error('Cashfree Create Order Error: ' . $e->getMessage(), [
-                'exception' => $e
+        if ($response->failed()) {
+            Log::error('Cashfree API Error:', [
+                'status' => $response->status(),
+                'body' => $response->json(),
             ]);
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
+            throw new \Exception('Cashfree API Error: ' . $response->body());
         }
+
+        return $response->object();
     }
 
     /**
-     * Get order details from Cashfree using SDK
+     * Get order details from Cashfree
      */
     public function getOrder($orderId)
     {
-        try {
-            $result = $this->cashfree->pGFetchOrder($orderId);
-            return [
-                'success' => true,
-                'data' => $result[0]
-            ];
-        } catch (\Exception $e) {
-            Log::error('Cashfree Get Order Error: ' . $e->getMessage());
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
-        }
+        $response = Http::withHeaders([
+            'x-client-id' => $this->clientId,
+            'x-client-secret' => $this->clientSecret,
+            'x-api-version' => $this->apiVersion,
+        ])->get("{$this->baseUrl}/orders/{$orderId}");
+
+        return $response->object();
     }
 
     /**
-     * Verify Webhook Signature using SDK
+     * Verify Cashfree Webhook Signature
      */
-    public function verifyWebhook($signature, $rawPayload, $timestamp)
+    public function verifySignature($signature, $timestamp, $rawData)
     {
-        try {
-            return $this->cashfree->PGVerifyWebhookSignature($signature, $rawPayload, $timestamp);
-        } catch (\Exception $e) {
-            Log::warning('Cashfree Webhook Verification Failed: ' . $e->getMessage());
-            return false;
-        }
+        $data = $timestamp . $rawData;
+        $computedSignature = base64_encode(hash_hmac('sha256', $data, $this->clientSecret, true));
+        return $signature === $computedSignature;
     }
 }

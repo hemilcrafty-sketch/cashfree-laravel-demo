@@ -9,11 +9,9 @@ use App\Http\Controllers\Api\PaymentController;
 |--------------------------------------------------------------------------
 */
 
-// Create Order API
-Route::post('/create-order', [PaymentController::class, 'createOrder']);
-
-// Check Payment Status API
-Route::get('/payment-status/{order_id}', [PaymentController::class, 'paymentStatus']);
-
-// Webhook Handler API
-Route::post('/cashfree/webhook', [PaymentController::class, 'handleWebhook']);
+Route::prefix('payments')->group(function () {
+    Route::post('/create-order', [PaymentController::class, 'createOrder'])->name('payment.create');
+    Route::get('/{order_id}', [PaymentController::class, 'paymentStatus']);
+    Route::get('/verify/{order_id}', [PaymentController::class, 'verifyPayment']);
+    Route::post('/webhook', [PaymentController::class, 'webhook']);
+});

@@ -21,9 +21,9 @@
     <div class="max-w-xl w-full relative z-10">
         <div class="text-center mb-10">
             <h1 class="text-5xl font-bold mb-3 tracking-tight bg-gradient-to-r from-indigo-300 via-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                Cashfree PHP SDK
+                Cashfree REST API
             </h1>
-            <p class="text-slate-400 text-lg font-light">Modern • Secure • Production Ready</p>
+            <p class="text-slate-400 text-lg font-light">Direct API Integration • Secure • Production Ready</p>
         </div>
 
         <div class="glass p-10 rounded-[2.5rem] shadow-2xl animate-glow">

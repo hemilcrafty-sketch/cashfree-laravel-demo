@@ -13,6 +13,5 @@ class Order extends Model
         'customer_email',
         'customer_phone',
         'payment_id',
-        'payment_session_id',
     ];
 }
